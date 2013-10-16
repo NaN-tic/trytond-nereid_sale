@@ -1,0 +1,135 @@
+{% extends 'base.jinja' %}
+
+{% block head %}<link href="{{ STATIC }}{{ config['TEMPLATE'] }}/css/state.css" rel="stylesheet" type="text/css">{% endblock %}
+{% block title %}{{ _('Sale')}} {% if sale.reference %}{{ sale.reference }}{% else %} - {% trans %}Not reference yet{% endtrans %}{% endif %}{% endblock %}
+{% block metadescription %}{{ _('Sale')}} {% if sale.reference %}{{ sale.reference }}{% else %}- {% trans %}Not reference yet{% endtrans %}{% endif %}{% endblock %}
+{% block canonical %}{{ url_for('sale.sale.render', uri=sale.id) }}{% endblock %}
+
+{% block main %}
+{% set bread_crumbs = [(url_for('nereid.website.home'), _('Home')), (url_for('sale.sale.render_list'), _('Sales')), (url_for('sale.sale.render', uri=sale.id), sale.reference or _('Not reference yet'))] %}
+{% set sale_state = {'draft': _('Draft'), 'quotation': _('Quotation'), 'confirmed': _('Confirmed'), 'processing': _('Processing'), 'done': _('Done'), 'cancel': _('Canceled')} %}
+{% set invoice_state = {'draft': _('Draft'), 'validated': _('Validated'), 'posted': _('Posted'), 'paid': _('Paid'), 'cancel': _('Canceled')} %}
+{% set shipment_state = {'draft': _('Draft'), 'done': _('Done'), 'cancel': _('Canceled'), 'assigned': _('Assigned'), 'packed': _('Packed'), 'waiting': _('Waiting')} %}
+{% include 'nav.jinja' %}
+<div class="row">
+    <div class="span12 page-header">
+        <h2>{{ _('Sale') }} {% if sale.reference %}{{ sale.reference }}{% else %}<small>({% trans %}Not reference yet{% endtrans %})</small>{% endif %}</h2>
+    </div>
+</div>
+<div class="row">
+    <div class="span6">
+        <h4>{{ _('Billing Address') }}</h4>
+        {{ sale.invoice_address.rec_name }}<br>
+        {{ sale.invoice_address.subdivision.name }} {{ sale.invoice_address.country.name }}
+    </div>
+    <div class="span6">
+        <h4>{{ _('Shipping Address') }}</h4>
+        {{ sale.shipment_address.rec_name }}<br>
+        {{ sale.shipment_address.subdivision.name }} {{ sale.shipment_address.country.name }}
+    </div>
+</div>
+<hr/>
+<div class="row">
+    <div class="span12">
+        <ul id="details" class="nav nav-tabs">
+            <li class="active"><a href="#lines" data-toggle="tab">{{ _('Lines') }}</a></li>
+            {% if sale.shipments %}<li><a href="#shipments" data-toggle="tab">{{ _('Shipments') }}</a></li>{% endif %}
+            {% if sale.invoices %}<li><a href="#invoices" data-toggle="tab">{{ _('Invoices') }}</a></li>{% endif %}
+        </ul>
+        <div id="sale-details" class="tab-content">
+            <div class="tab-pane fade in active" id="lines">
+                {% if sale.lines %}<table class="table table-striped">
+                  <tbody>
+                  <tr class="blacky">
+                    <th>{{ _('Name') }}</th>
+                    <th>{{ _('Quantity') }}</th>
+                    <th>{{ _('Unit Price') }}</th>
+                    <th>{{ _('Total Price') }}</th>
+                  </tr>
+                  {% for line in sale.lines %}
+                  <tr>
+                    <td>{{ line.description }}</td>
+                    <td>{{ line.quantity|int }} {{ line.unit.name }}</td>
+                    <td>{{ line.unit_price|currencyformat(line.sale.currency.code) }}</td>
+                    <td>{{ line.amount|currencyformat(line.sale.currency.code) }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+                </table>
+                {% else %}<div class="alert">{{ _('Not lines are available') }}.</div>{% endif %}
+            </div>
+            {% if sale.invoices %}<div class="tab-pane fade" id="invoices">
+                <table class="table table-striped">
+                  <tbody>
+                  <tr class="blacky">
+                    <th>{{ _('Reference') }}</th>
+                    <th>{{ _('Date') }}</th>
+                    <th>{{ _('Status') }}</th>
+                    <th>{{ _('Price') }}</th>
+                    <th>{{ _('Details') }}</th>
+                  </tr>
+                  {% for invoice in sale.invoices %}
+                  <tr>
+                    <td>{% if invoice.reference %}{{ invoice.reference }}{% endif %}</td>
+                    <td>{{ invoice.invoice_date|dateformat }}</td>
+                    <td><span class="state state-small state-{{ invoice.state }}">{{ invoice_state[invoice.state] }}</span></td>
+                    <td>{{ sale.total_amount|currencyformat(invoice.currency.code) }}</td>
+                    <td><a href="{{ url_for('account.invoice.render', uri=invoice.id) }}">{{ _('View Details') }}</a></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+                </table>
+            </div>{% endif %}
+            {% if sale.shipments %}<div class="tab-pane fade" id="shipments">
+                <table class="table table-striped">
+                  <tbody>
+                  <tr class="blacky">
+                    <th>{{ _('Reference') }}</th>
+                    <th>{{ _('Date') }}</th>
+                    <th>{{ _('Status') }}</th>
+                    <th>{{ _('Details') }}</th>
+                  </tr>
+                  {% for shipment in sale.shipments %}
+                  <tr>
+                    <td>{% if shipment.reference %}{{ shipment.reference }}{% endif %}</td>
+                    <td>{{ shipment.effective_date|dateformat }}</td>
+                    <td><span class="state state-small state-{{ shipment.state }}">{{ shipment_state[shipment.state] }}</span></td>
+                    <td><a href="{{ url_for('stock.shipment.out.render', uri=shipment.id) }}">{{ _('View Details') }}</a></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+                </table>
+            </div>{% endif %}
+        </div>
+    </div>
+</div>
+<div class="row-fluid">
+    <div class="span6">
+        <div class="well">
+            <h3>{{ _('Information') }}</h3>
+            <div id="basket_totals">
+                <table class="table table-bordered">
+                <tbody>
+                <tr><td>{{ _('State') }}</td><td class="align-right"><span class="state state-small state-{{ sale.state }}">{{ sale_state[sale.state] }}</span></td></tr>
+                <tr><td>{{ _('Date') }}</td><td class="align-right">{{ sale.sale_date|dateformat }}</td></tr>
+                </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="span6">
+        <div class="well">
+            <h3>{{ _('Totals') }}</h3>
+            <div id="sale_totals">
+                <table class="table table-bordered">
+                <tbody>
+                <tr><td>{{ _('Untaxed') }}</td><td class="align-right">{{ sale.untaxed_amount|currencyformat(sale.currency.code) }}</td></tr>
+                <tr><td>{{ _('Tax') }}</td><td class="align-right">{{ sale.tax_amount|currencyformat(sale.currency.code) }}</td></tr>
+                <tr class="success"><td><h4>{{ _('Total') }}</h4></td><td class="align-right"><h3 class="price_color">{{ sale.total_amount|currencyformat(sale.currency.code) }}</h3></td></tr>
+                </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
